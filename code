@@ -1,0 +1,97 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from tensorflow.keras import layers, models, datasets
+
+# ======================
+# Load dataset
+# ======================
+(x_train, y_train), (x_test, y_test) = datasets.mnist.load_data()
+
+# Normalize + Flatten
+x_train = x_train.astype("float32") / 255.0
+x_test = x_test.astype("float32") / 255.0
+
+x_train = x_train.reshape((len(x_train), 784))
+x_test = x_test.reshape((len(x_test), 784))
+
+# ======================
+# Encoder
+# ======================
+input_img = layers.Input(shape=(784,))
+encoded = layers.Dense(128, activation='relu')(input_img)
+latent = layers.Dense(2, activation='relu')(encoded)
+
+# ======================
+# Decoder
+# ======================
+decoded = layers.Dense(128, activation='relu')(latent)
+output = layers.Dense(784, activation='sigmoid')(decoded)
+
+# ======================
+# Autoencoder Model
+# ======================
+autoencoder = models.Model(input_img, output)
+
+# Compile
+autoencoder.compile(optimizer='adam', loss='mse')
+
+# ======================
+# Train
+# ======================
+autoencoder.fit(
+    x_train, x_train,
+    epochs=10,
+    batch_size=256,
+    validation_data=(x_test, x_test)
+)
+
+# ======================
+# Reconstruction
+# ======================
+decoded_imgs = autoencoder.predict(x_test)
+
+# ======================
+# Show Original vs Reconstructed
+# ======================
+plt.figure(figsize=(6,10))
+
+for i in range(5):
+    # Original
+    plt.subplot(5,2,2*i+1)
+    plt.imshow(x_test[i].reshape(28,28), cmap='gray')
+    plt.title("Original")
+    plt.axis('off')
+
+    # Reconstructed
+    plt.subplot(5,2,2*i+2)
+    plt.imshow(decoded_imgs[i].reshape(28,28), cmap='gray')
+    plt.title("Reconstructed")
+    plt.axis('off')
+
+plt.tight_layout()
+plt.show()
+
+# ======================
+# 🔵 Latent Space Visualization
+# ======================
+# Create encoder model
+encoder = models.Model(input_img, latent)
+
+# Get encoded (compressed) representation
+encoded_imgs = encoder.predict(x_test)
+
+plt.figure(figsize=(8,6))
+scatter = plt.scatter(
+    encoded_imgs[:, 0],
+    encoded_imgs[:, 1],
+    c=y_test,
+    cmap='tab10',
+    alpha=0.6
+)
+
+plt.colorbar(scatter)
+plt.title("2D Latent Space Representation")
+plt.xlabel("Latent Dimension 1")
+plt.ylabel("Latent Dimension 2")
+
+plt.show()
